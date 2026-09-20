@@ -1,8 +1,7 @@
-# vector-index
+# vector-indexing - an educational POC
 
 Vector search indexes written from scratch in NumPy, benchmarked against
-brute force on Simple English Wikipedia. Started as a way to learn how this
-stuff actually works. Plan and progress in [PLAN.md](PLAN.md).
+brute force on Simple English Wikipedia. Intended as a learning tool. Plan and progress in [PLAN.md](PLAN.md).
 
 ## Usage
 
