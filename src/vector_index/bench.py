@@ -84,10 +84,14 @@ class BenchResult:
         return asdict(self)
 
 
-def benchmark(index: Index, ds: Dataset, k: int, params: str = "") -> BenchResult:
-    t0 = time.perf_counter()
-    index.build(ds.base)
-    build_s = time.perf_counter() - t0
+def benchmark(index: Index, ds: Dataset, k: int, params: str = "", build: bool = True) -> BenchResult:
+    """Build (unless `build=False`, for sweeping a query-time knob) and time
+    `search` over every held-out query one at a time."""
+    build_s = 0.0
+    if build:
+        t0 = time.perf_counter()
+        index.build(ds.base)
+        build_s = time.perf_counter() - t0
 
     # warm up
     index.search(ds.queries[0], k)

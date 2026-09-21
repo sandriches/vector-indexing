@@ -104,7 +104,7 @@ Concepts to learn: cosine vs dot product vs L2 and why normalisation lets
 you swap them; why `argpartition` beats a full sort; memory bandwidth as the
 real cost of brute force.
 
-## Phase 2: IVF (inverted file index)  (next)
+## Phase 2: IVF (inverted file index)  (done)
 
 Cluster the vectors with k-means, store each vector under its nearest
 centroid, and at query time only scan the `nprobe` closest clusters.
@@ -120,7 +120,7 @@ being clearly faster than brute force on the 100k corpus.
 Concepts: coarse quantization, the recall/speed knob, why more clusters
 means cheaper scans but worse boundaries.
 
-## Phase 3: HNSW (hierarchical navigable small world graph)  (planned)
+## Phase 3: HNSW (hierarchical navigable small world graph)  (next)
 
 A layered proximity graph. Search greedily walks from an entry point in the
 top layer down to layer 0, then does a beam search with width `ef`.
@@ -177,3 +177,9 @@ memory/recall tradeoff and re-ranking.
 - 2026-09-20: Phase 1 done. 25k articles -> 98,579 chunks, embedded in 5 min on
   MPS. Brute force on 97,579 base vectors (1,000 held-out queries): recall@10
   1.0, p50 3.2 ms, ~314 QPS, 150 MB. This is the bar for Phases 2-4.
+- 2026-09-20: Phase 2 done. `kmeans.py` (k-means++ init, Lloyd's, empty-cluster
+  reseeding) and `ivf.py` (CSR-style cluster storage). Sweeps at nlist=1024 and
+  256 in `results/`, curve in `results/recall_vs_qps.png`. nlist=1024 nprobe=16:
+  recall@10 0.926 at 0.16 ms p50 (20x brute force). At an equal scan budget
+  (~1/32 of the corpus) 1024 clusters beat 256 (0.959 vs 0.910): finer cells
+  waste less of the probe on far-away vectors. Build is 11 s for 1024 clusters.
