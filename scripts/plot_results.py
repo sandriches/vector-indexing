@@ -18,7 +18,7 @@ RESULTS = Path(__file__).resolve().parents[1] / "results"
 
 def series_key(row: dict) -> str:
     # group sweeps: strip the query-time knob (nprobe / ef_search) from params
-    p = re.sub(r"\s*(nprobe|ef_search)=\d+", "", row["params"]).strip()
+    p = re.sub(r"\s*(nprobe|ef)=\d+", "", row["params"]).strip()
     return f'{row["index"]} {p}'.strip()
 
 

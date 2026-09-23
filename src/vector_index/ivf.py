@@ -33,7 +33,8 @@ class IVFIndex:
         self._vecs: np.ndarray | None = None      # vectors sorted by cluster
         self._ids: np.ndarray | None = None       # original id of each sorted row
         self._offsets: np.ndarray | None = None   # cluster c is rows offsets[c]:offsets[c+1]
-        self.last_scanned = 0                     # vectors compared on the last search
+        self.last_scanned = 0                     # base vectors scanned on the last search
+        self.last_dist_comps = 0                  # scanned + centroid comparisons
 
     def build(self, vectors: np.ndarray) -> None:
         X = np.ascontiguousarray(vectors, dtype=np.float32)
@@ -60,6 +61,7 @@ class IVFIndex:
         slices = [slice(self._offsets[c], self._offsets[c + 1]) for c in probe]
         rows = np.concatenate([np.arange(s.start, s.stop) for s in slices])
         self.last_scanned = rows.size
+        self.last_dist_comps = rows.size + self.nlist
         if rows.size == 0:
             return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.float32)
         # 3. fine step: exact distances within the candidates

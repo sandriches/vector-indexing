@@ -78,6 +78,7 @@ class BenchResult:
     qps: float
     build_s: float
     memory_mb: float
+    dist_comps: float = 0.0   # mean vectors compared per query (0 if index doesn't report)
     params: str = ""
 
     def row(self) -> dict:
@@ -98,11 +99,13 @@ def benchmark(index: Index, ds: Dataset, k: int, params: str = "", build: bool =
 
     pred = np.empty((ds.queries.shape[0], k), dtype=np.int64)
     lat = np.empty(ds.queries.shape[0])
+    comps = np.zeros(ds.queries.shape[0])
     for i, q in enumerate(ds.queries):
         t = time.perf_counter()
         ids, _ = index.search(q, k)
         lat[i] = time.perf_counter() - t
         pred[i, : len(ids)] = ids
+        comps[i] = getattr(index, "last_dist_comps", 0)
 
     return BenchResult(
         index=index.name,
@@ -116,6 +119,7 @@ def benchmark(index: Index, ds: Dataset, k: int, params: str = "", build: bool =
         qps=float(1.0 / lat.mean()),
         build_s=build_s,
         memory_mb=index.memory_bytes() / 1e6,
+        dist_comps=float(comps.mean()),
         params=params,
     )
 
@@ -139,7 +143,7 @@ def render_table(results_dir: Path = RESULTS_DIR) -> str:
             rows.extend(csv.DictReader(f))
     if not rows:
         return "(no results yet)"
-    cols = ["index", "params", "dataset", "n_base", "k", "recall", "p50_ms", "p95_ms", "qps", "build_s", "memory_mb"]
+    cols = ["index", "params", "dataset", "n_base", "k", "recall", "p50_ms", "p95_ms", "qps", "dist_comps", "build_s", "memory_mb"]
     lines = ["| " + " | ".join(cols) + " |", "|" + "|".join("---" for _ in cols) + "|"]
     for r in rows:
         cells = []
@@ -147,7 +151,7 @@ def render_table(results_dir: Path = RESULTS_DIR) -> str:
             v = r[c]
             try:
                 fv = float(v)
-                v = f"{fv:.3f}" if c == "recall" else f"{fv:.2f}" if "." in v else v
+                v = f"{fv:.3f}" if c == "recall" else f"{fv:.0f}" if c == "dist_comps" else f"{fv:.2f}" if "." in v else v
             except ValueError:
                 pass
             cells.append(v)
