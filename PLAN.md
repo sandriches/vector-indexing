@@ -120,7 +120,7 @@ being clearly faster than brute force on the 100k corpus.
 Concepts: coarse quantization, the recall/speed knob, why more clusters
 means cheaper scans but worse boundaries.
 
-## Phase 3: HNSW (hierarchical navigable small world graph)  (next)
+## Phase 3: HNSW (hierarchical navigable small world graph)  (done)
 
 A layered proximity graph. Search greedily walks from an entry point in the
 top layer down to layer 0, then does a beam search with width `ef`.
@@ -140,7 +140,7 @@ is limited by Python overhead.
 Concepts: navigable small-world graphs, greedy search and local minima,
 neighbour selection heuristics, why build is expensive and search is cheap.
 
-## Phase 4: product quantization  (planned)
+## Phase 4: product quantization  (next)
 
 Compress vectors by splitting each into `m` subvectors and replacing each
 subvector with the index of its nearest codebook entry. Search uses
@@ -183,3 +183,13 @@ memory/recall tradeoff and re-ranking.
   recall@10 0.926 at 0.16 ms p50 (20x brute force). At an equal scan budget
   (~1/32 of the corpus) 1024 clusters beat 256 (0.959 vs 0.910): finer cells
   waste less of the probe on far-away vectors. Build is 11 s for 1024 clusters.
+- 2026-09-23: Phase 3 done. `hnsw.py`: layered graph, greedy descent, beam
+  search on layer 0, paper's diversity heuristic for link selection. Build on
+  97,579 vectors: 242 s (M=16, efc=100), pickled to `data/` so ef sweeps skip
+  the rebuild. Layer populations 91517 / 5671 / 359 / 30 / 2, mean layer-0
+  degree 25.5. ef=50: recall@10 0.981 touching 902 vectors (~1%) per query,
+  0.64 ms p50. ef=400 reaches 0.999. Harness now records mean `dist_comps`
+  per query. In distance computations HNSW beats IVF clearly (recall 0.98 at
+  ~900 comps vs IVF needing ~14k for 0.99); in wall clock IVF wins at the
+  same recall because its scan is one matmul while HNSW pays Python overhead
+  per hop. That gap is the cost of the interpreter, not the algorithm.

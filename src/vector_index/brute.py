@@ -12,6 +12,7 @@ class BruteForceIndex:
 
     def __init__(self) -> None:
         self._vectors: np.ndarray | None = None
+        self.last_dist_comps = 0
 
     def build(self, vectors: np.ndarray) -> None:
         if vectors.dtype != np.float32:
@@ -28,6 +29,7 @@ class BruteForceIndex:
         # One matrix multiply gives every similarity. Rows are normalised, so
         # dot product == cosine similarity.
         sims = queries.astype(np.float32) @ self._vectors.T
+        self.last_dist_comps = self._vectors.shape[0]
         dists = 1.0 - sims
         # argpartition finds the k smallest in O(n) without sorting all n.
         # Only the k survivors then get a full sort.
