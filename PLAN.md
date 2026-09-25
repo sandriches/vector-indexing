@@ -140,7 +140,7 @@ is limited by Python overhead.
 Concepts: navigable small-world graphs, greedy search and local minima,
 neighbour selection heuristics, why build is expensive and search is cheap.
 
-## Phase 4: product quantization  (next)
+## Phase 4: product quantization  (done)
 
 Compress vectors by splitting each into `m` subvectors and replacing each
 subvector with the index of its nearest codebook entry. Search uses
@@ -193,3 +193,31 @@ memory/recall tradeoff and re-ranking.
   ~900 comps vs IVF needing ~14k for 0.99); in wall clock IVF wins at the
   same recall because its scan is one matmul while HNSW pays Python overhead
   per hop. That gap is the cost of the interpreter, not the algorithm.
+- 2026-09-25: Phase 4 done. `pq.py`: `ProductQuantizer` (one k-means per
+  subspace, 256 centroids, uint8 codes, ADC via inner-product tables),
+  `PQIndex` (flat scan of codes) and `IVFPQIndex` (PQ on residuals against
+  the IVF centroids). Both take `rerank` to re-score top candidates exactly.
+
+  Flat PQ on 97,579 x 384 float32 (150 MB):
+
+  | bytes/vec (m) | index MB | compression | recall@10 raw | + rerank 100 |
+  |---|---|---|---|---|
+  | 8  | 1.2 | 128x | 0.205 | 0.594 |
+  | 16 | 2.0 |  77x | 0.406 | 0.821 |
+  | 32 | 3.5 |  43x | 0.612 | 0.960 |
+  | 48 | 5.1 |  30x | 0.707 | 0.991 |
+
+  IVF-PQ nlist=1024 m=32: nprobe=32 rerank=100 gives 0.907 at 1.75 ms;
+  without rerank it plateaus at ~0.56 no matter how many cells are probed,
+  because the error is in the codes, not the probe.
+
+  Lessons: (1) 384-dim MiniLM embeddings are nearly full-rank, so ADC
+  ranking alone is poor at small m; the raw-code recall is the honest cost of
+  the compression. (2) Reranking fixes most of it cheaply: 100 exact
+  distances is ~0.1% of the corpus. But the exact vectors then have to live
+  somewhere, which the memory column shows (real systems keep them on disk
+  or in a slower tier). (3) Residual encoding in IVF-PQ helps a little
+  (0.45 vs 0.41 at m=16) but does not change the picture. (4) Flat PQ scan
+  in NumPy is slower than brute force (m gathers over n bytes vs one BLAS
+  matmul), so here PQ is purely a memory story; the speed benefit needs
+  SIMD table lookups, which is what FAISS does.

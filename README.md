@@ -16,6 +16,8 @@ uv run scripts/embed_corpus.py
 uv run scripts/run_bench.py --index brute
 uv run scripts/run_bench.py --index ivf --nlist 1024 --nprobe 1,4,16,64
 uv run scripts/run_bench.py --index hnsw --M 16 --efc 100 --ef 10,50,200   # ~4 min build, cached after
+uv run scripts/run_bench.py --index pq --m 16 --rerank 0,100
+uv run scripts/run_bench.py --index ivfpq --nlist 1024 --m 16 --nprobe 8,32 --rerank 0,100
 
 # recall vs qps plot -> results/recall_vs_qps.png
 uv run scripts/plot_results.py
