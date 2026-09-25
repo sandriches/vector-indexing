@@ -11,8 +11,9 @@ from vector_index.brute import BruteForceIndex
 from vector_index.data import DATA_DIR, load_or_embed
 from vector_index.hnsw import HNSWIndex
 from vector_index.ivf import IVFIndex
+from vector_index.pq import IVFPQIndex, PQIndex
 
-INDEXES = ["brute", "ivf", "hnsw"]
+INDEXES = ["brute", "ivf", "hnsw", "pq", "ivfpq"]
 
 
 def main() -> None:
@@ -24,6 +25,8 @@ def main() -> None:
     ap.add_argument("--efc", type=int, default=100, help="hnsw: ef_construction")
     ap.add_argument("--ef", default="50", help="hnsw: ef_search; comma list sweeps without rebuilding")
     ap.add_argument("--no-cache", action="store_true", help="hnsw: rebuild even if a pickled graph exists in data/")
+    ap.add_argument("--m", type=int, default=16, help="pq/ivfpq: subspaces (bytes per vector)")
+    ap.add_argument("--rerank", default="0", help="pq/ivfpq: exact re-score of top R; comma list sweeps")
     ap.add_argument("--articles", type=int, default=25000)
     ap.add_argument("--words", type=int, default=100)
     ap.add_argument("--queries", type=int, default=1000)
@@ -66,6 +69,32 @@ def main() -> None:
             r = benchmark(hnsw, ds, args.k, params=hnsw.params(), build=False)
             r.build_s = res.build_s
             append_result(r)
+    elif args.index == "pq":
+        reranks = [int(x) for x in args.rerank.split(",")]
+        pq = PQIndex(m=args.m, rerank=reranks[0])
+        res = benchmark(pq, ds, args.k, params=pq.params())
+        append_result(res)
+        for r in reranks[1:]:
+            pq.rerank = r
+            rr = benchmark(pq, ds, args.k, params=pq.params(), build=False)
+            rr.build_s = res.build_s
+            append_result(rr)
+    elif args.index == "ivfpq":
+        nprobes = [int(x) for x in args.nprobe.split(",")]
+        reranks = [int(x) for x in args.rerank.split(",")]
+        idx = IVFPQIndex(nlist=args.nlist, m=args.m, nprobe=nprobes[0], rerank=reranks[0])
+        res = benchmark(idx, ds, args.k, params=idx.params())
+        append_result(res)
+        first = True
+        for r in reranks:
+            for nprobe in nprobes:
+                if first:
+                    first = False
+                    continue
+                idx.rerank, idx.nprobe = r, nprobe
+                rr = benchmark(idx, ds, args.k, params=idx.params(), build=False)
+                rr.build_s = res.build_s
+                append_result(rr)
     print(write_table().read_text())
 
 
